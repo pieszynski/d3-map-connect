@@ -14,7 +14,13 @@ var d3MapConnect = (function (undefined) {
         blockDistance: 50,
         blockInnerSize: 30,
         blockInnerMargin: 3,
-        fontStroke: 'black'
+        fontStroke: 'black',
+        edge: {
+          dotRadius: 3,
+          edgeOpacity: 0.5,
+          inStroke: '#fa0',
+          outStroke: 'blue'
+        }
       },
       showUnused: true
     }, options);
@@ -66,6 +72,16 @@ var d3MapConnect = (function (undefined) {
 
         _lastBlockStartX += blockRef.width + _this.options.chart.blockDistance;
       });
+
+      this.data.maps.forEach(function _forEachMap(el) {
+        var srcRef = _this.refs.blocks.find(function (fel) { return fel.data.id === el.sourceBlockId; });
+        var dstRef = _this.refs.blocks.find(function (fel) { return fel.data.id === el.destinationBlockId; });
+
+        var edgeRef = drawEdges.call(_this, el.name, srcRef, dstRef, el.mapping);
+        if (edgeRef) {
+          _this.refs.edges.push(edgeRef);
+        }
+      });
     }
 
     function createChart() {
@@ -114,6 +130,7 @@ var d3MapConnect = (function (undefined) {
       );
       blockRef.request.node = reqNodes.node;
       blockRef.request.height = reqNodes.height;
+      blockRef.request.yScaleFn = reqNodes.yScaleFn;
 
       var respNodes = drawInputOutputs.call(
         this,
@@ -126,6 +143,7 @@ var d3MapConnect = (function (undefined) {
       );
       blockRef.response.node = respNodes.node;
       blockRef.response.height = respNodes.height;
+      blockRef.response.yScaleFn = respNodes.yScaleFn;
 
       blockRef.width = blockRef.request.width
         + this.options.chart.blockInnerSize
@@ -134,11 +152,12 @@ var d3MapConnect = (function (undefined) {
       blockRef.height = Math.max(blockRef.request.height, blockRef.response.height);
 
       // narysowanie kwadratu wewnętrznego określającego blok
+      var heightAdd = Math.max(reqNodes.yOffset, respNodes.yOffset);
       blockRef.node.append('rect')
         .attr('x', blockRef.x + blockRef.request.width + this.options.chart.blockInnerMargin)
         .attr('y', blockRef.y)
         .attr('width', this.options.chart.blockInnerSize)
-        .attr('height', blockRef.height)
+        .attr('height', blockRef.height + heightAdd)
         .attr('stroke', this.options.chart.fontStroke)
         .attr('fill', 'transparent');
     }
@@ -152,15 +171,20 @@ var d3MapConnect = (function (undefined) {
         ySpacing = ySize + Math.round(ySize / 5),
         yScale = d3.scaleBand()
           .domain(data.map(function (el) { return el.name; }))
-          .rangeRound([0, data.length]);
+          .rangeRound([0, data.length]),
+        yOffset = 'end' !== align ? Math.round(ySpacing / 2) : 0;
       
       var node = parentNode.append('g')
         .attr('class', 'block-inputs')
         .selectAll('text')
         .data(data);
       
+      function yScaleFn(name) {
+        return y + yScale(name) * ySpacing + ySize + yOffset;
+      }
+      
       node.enter().append('text')
-        .attr('y', function (d) { return y + yScale(d.name) * ySpacing + ySize; })
+        .attr('y', function (d) { return yScaleFn(d.name); })
         .attr('font-family', this.options.chart.fontFamily)
         .attr('font-size', this.options.chart.fontSize)
         .text(function (d) { return d.name; })
@@ -169,7 +193,9 @@ var d3MapConnect = (function (undefined) {
       
       return {
         node: node,
-        height: data.length * ySpacing
+        height: data.length * ySpacing,
+        yOffset: yOffset,
+        yScaleFn: yScaleFn
       }
     }
 
@@ -190,6 +216,95 @@ var d3MapConnect = (function (undefined) {
         })
       
       return Math.ceil(resp);
+    }
+
+    function drawEdges(name, srcRef, dstRef, mapping) {
+      var _this = this,
+        bezLen = Math.ceil(_this.options.chart.blockDistance / 2),
+        node = this.refs.edgesGroup.append('g')
+        .attr('class', `edges-for-${helpers.name(name)}`);
+      
+      mapping.forEach(function (el) {
+        var srcXY = getEdgeXYFor.call(_this, el.src, srcRef, true);
+        if (!srcXY)
+          return undefined;
+        
+        var dstXY = getEdgeXYFor.call(_this, el.dst, dstRef, false);
+        if (!dstXY)
+          return undefined;
+        
+        node.append('path')
+          .attr('stroke', _this.options.chart.fontStroke)
+          .attr('stroke-opacity', _this.options.chart.edge.edgeOpacity)
+          .attr('fill', 'transparent')
+          .attr('d', `M ${srcXY.x} ${srcXY.y} ${(0 < srcXY.bezLen ? `L ${srcXY.x + srcXY.bezLen} ${srcXY.y} ` : '')}C ${srcXY.x + srcXY.bezLen + bezLen} ${srcXY.y}, ${dstXY.x - bezLen} ${dstXY.y}, ${dstXY.x} ${dstXY.y}`);
+        node.append('circle')
+          .attr('cx', srcXY.x)
+          .attr('cy', srcXY.y)
+          .attr('stroke', srcXY.stroke)
+          .attr('fill', srcXY.stroke)
+          .attr('stroke-opacity', _this.options.chart.edge.edgeOpacity)
+          .attr('fill-opacity', _this.options.chart.edge.edgeOpacity)
+          .attr('r', _this.options.chart.edge.dotRadius);
+        node.append('circle')
+          .attr('cx', dstXY.x)
+          .attr('cy', dstXY.y)
+          .attr('stroke', _this.options.chart.fontStroke)
+          .attr('fill', _this.options.chart.fontStroke)
+          .attr('stroke-opacity', _this.options.chart.edge.edgeOpacity)
+          .attr('fill-opacity', _this.options.chart.edge.edgeOpacity)
+          .attr('r', _this.options.chart.edge.dotRadius);
+      });
+
+      return {
+        node: node
+      };
+    }
+
+    function getEdgeXYFor(name, blockRef, isStart) {
+      var yScaleFn = undefined,
+        baseX = blockRef.x,
+        stroke = undefined,
+        bezLen = 0;
+      if (0 === name.toUpperCase().indexOf('IN.')) {
+        yScaleFn = blockRef.request.yScaleFn;
+        name = name.substr(3);
+        stroke = this.options.chart.edge.inStroke;
+        if (isStart) {
+          baseX += blockRef.request.width;
+          bezLen = 2 * this.options.chart.blockInnerMargin
+            + this.options.chart.blockInnerSize
+            + blockRef.response.width
+            ;//+ Math.ceil(this.options.chart.blockDistance / 3);
+        }
+      } else if (0 === name.toUpperCase().indexOf('OUT.')) {
+        yScaleFn = blockRef.response.yScaleFn;
+        name = name.substr(4);
+        stroke = this.options.chart.edge.outStroke;
+        baseX += blockRef.request.width + 2 * this.options.chart.blockInnerMargin + this.options.chart.blockInnerSize;
+        if (isStart) {
+          baseX += blockRef.response.width;
+        }
+      } else {
+        throw new Error(`Unknown direction for name: ${name}`);
+      }
+
+      if (isStart) {
+        baseX += 3 * this.options.chart.blockInnerMargin;
+      } else {
+        baseX -= 3 * this.options.chart.blockInnerMargin;
+      }
+
+      var baseY = yScaleFn(name) || undefined;
+      if (!baseY)
+        return undefined;
+
+      return {
+        x: baseX,
+        y: baseY - Math.round(this.options.chart.fontSize / 3),
+        stroke: stroke,
+        bezLen: bezLen
+      }
     }
 
     return {

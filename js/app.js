@@ -9,7 +9,8 @@ var data = {
             ],
             responseNodes: [
                 { name: 'Ref'},
-                { name: 'Score' }
+                { name: 'Score' },
+                { name: 'Imie' }
             ]
         },
         {
@@ -34,7 +35,8 @@ var data = {
             destinationBlockId: 'calc1',
             mapping: [
                 { src: 'IN.Pesel', dst: 'IN.Pesel' },
-                { src: 'IN.Nazwisko', dst: 'IN.Nazwisko' }
+                { src: 'IN.Nazwisko', dst: 'IN.Nazwisko' },
+                { src: 'OUT.Imie', dst: 'IN.Imie' }
             ]
         }
     ]
