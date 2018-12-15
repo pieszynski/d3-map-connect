@@ -20,6 +20,10 @@ var d3MapConnect = (function (undefined) {
           edgeOpacity: 0.5,
           inStroke: '#fa0',
           outStroke: 'blue'
+        },
+        pos: {
+          x: 30,
+          y: 30
         }
       },
       showUnused: true
@@ -28,7 +32,8 @@ var d3MapConnect = (function (undefined) {
       chart: undefined,
       edgesGroup: undefined,
       edges: undefined,
-      blocks: undefined
+      blocks: undefined,
+      mouse: undefined
     };
   }
 
@@ -98,8 +103,9 @@ var d3MapConnect = (function (undefined) {
 
       this.refs.chart = d3.select(this.node)
         .append('g')
-        .attr('class', 'chart-node')
-        .attr('transform', 'translate(30,30)');
+        .attr('class', 'chart-node');
+      
+      updateChartPos.call(this);
       
       this.refs.edgesGroup = this.refs.chart
         .append('g')
@@ -107,6 +113,80 @@ var d3MapConnect = (function (undefined) {
       
       this.refs.edges = [];
       this.refs.blocks = [];
+      this.refs.mouse = {
+        isDown: false,
+        lastPos: undefined
+      }
+
+      helpers.on(
+        this,
+        this.node,
+        'mousedown',
+        function _mouseDownEvt(evt) {
+          this.refs.mouse.isDown = true;
+        }
+      );
+      helpers.on(
+        this,
+        this.node,
+        'mouseup',
+        function _mouseDownEvt(evt) {
+          this.refs.mouse.isDown = false;
+          this.refs.mouse.lastPos = undefined;
+        }
+      );
+      helpers.on(
+        this,
+        this.node,
+        'mouseout',
+        function _mouseDownEvt(evt) {
+          this.refs.mouse.isDown = false;
+          this.refs.mouse.lastPos = undefined;
+        }
+      );
+      helpers.on(
+        this,
+        this.node,
+        'mousemove',
+        function _mouseMoveEvt(evt) {
+          if (!this.refs.mouse.isDown)
+            return;
+          if (!this.refs.mouse.lastPos) {
+            this.refs.mouse.lastPos = { x: evt.clientX, y: evt.clientY };
+            return;
+          }
+          var dx = evt.clientX - this.refs.mouse.lastPos.x;
+          var dy = evt.clientY - this.refs.mouse.lastPos.y;
+          this.refs.mouse.lastPos.x = evt.clientX;
+          this.refs.mouse.lastPos.y = evt.clientY;
+          if (0 === dx && 0 === dy)
+            return;
+
+          moveChartPos.call(this, dx, dy);
+        }
+      );
+    }
+
+    function updateChartPos(x, y) {
+      if (undefined === x || null === x) {
+        x = this.options.chart.pos.x;
+        y = this.options.chart.pos.y;
+      } else if ('number' !== typeof (x)) {
+        y = x.y;
+        x = x.x;
+      }
+
+      this.options.chart.pos.x = x;
+      this.options.chart.pos.y = y;
+
+      this.refs.chart
+        .attr('transform', `translate(${x},${y})`);
+    }
+
+    function moveChartPos(dx, dy) {
+      this.options.chart.pos.x += dx;
+      this.options.chart.pos.y += dy;
+      updateChartPos.call(this);
     }
 
     function drawBlock(blockRef, idx, isLast) {
@@ -362,7 +442,8 @@ var d3MapConnect = (function (undefined) {
 
     return {
       setData: setData,
-      showUnused: showUnused
+      showUnused: showUnused,
+      updateChartPos: updateChartPos
     };
   }();
 
@@ -373,6 +454,11 @@ var d3MapConnect = (function (undefined) {
       }
       var resp = name.replace(/[^a-z0-9_-]/gi, '');
       return resp;
+    },
+    on: function _on(_this, target, event, cb) {
+      target.addEventListener(event, function () {
+        cb.apply(_this, arguments);
+      });
     }
   }
 

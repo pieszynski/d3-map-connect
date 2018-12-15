@@ -26,6 +26,22 @@ var data = {
                 { name: 'Nationality'},
                 { name: 'Score'}
             ]
+        },
+        {
+            id: 'calcFin',
+            requestNodes: [
+                { name: 'Ref'},
+                { name: 'Pesel' },
+                { name: 'Score' },
+                { name: 'Nazwisko' },
+                { name: 'Imie' }
+            ],
+            responseNodes: [
+                { name: 'Ref'},
+                { name: 'DataScoreIndex'},
+                { name: 'Nationality'},
+                { name: 'Score'}
+            ]
         }
     ],
     maps: [
@@ -36,6 +52,25 @@ var data = {
             mapping: [
                 { src: 'IN.Pesel', dst: 'IN.Pesel' },
                 { src: 'IN.Nazwisko', dst: 'IN.Nazwisko' },
+                { src: 'OUT.Imie', dst: 'IN.Imie' }
+            ]
+        },
+        {
+            name: 'map-calc1-calcFin',
+            sourceBlockId: 'calc1',
+            destinationBlockId: 'calcFin',
+            mapping: [
+                { src: 'OUT.Ref', dst: 'IN.Ref' },
+                { src: 'IN.Pesel', dst: 'IN.Pesel' },
+                { src: 'OUT.Score', dst: 'IN.Score' },
+                { src: 'IN.Nazwisko', dst: 'IN.Nazwisko' }
+            ]
+        },
+        {
+            name: 'map-input-calcFin',
+            sourceBlockId: 'input',
+            destinationBlockId: 'calcFin',
+            mapping: [
                 { src: 'OUT.Imie', dst: 'IN.Imie' }
             ]
         }
