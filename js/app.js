@@ -43,3 +43,7 @@ var data = {
 }
 var mapFlow = d3MapConnect.connectWith(document.querySelector('.chart-container'))
 mapFlow.setData(data);
+
+function updateShowUnused(evt) {
+    mapFlow.showUnused(evt.checked)
+}

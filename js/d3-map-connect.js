@@ -36,15 +36,22 @@ var d3MapConnect = (function (undefined) {
 
     function setData(data) {
       this.data = data;
+      console.log('options', this.options);
+      console.log('data', this.data);
+      reDraw.call(this);
+    }
+
+    function showUnused(show) {
+      this.options.showUnused = !!show;
       reDraw.call(this);
     }
 
     function reDraw() {
-      console.log('options', this.options);
-      console.log('data', this.data);
       var _this = this;
 
       createChart.call(this);
+
+      markUsedFields.call(this);
 
       var _lastBlockStartX = 0;
       this.data.blocks.forEach(function _forEachBlock(el, idx, arr) {
@@ -74,8 +81,8 @@ var d3MapConnect = (function (undefined) {
       });
 
       this.data.maps.forEach(function _forEachMap(el) {
-        var srcRef = _this.refs.blocks.find(function (fel) { return fel.data.id === el.sourceBlockId; });
-        var dstRef = _this.refs.blocks.find(function (fel) { return fel.data.id === el.destinationBlockId; });
+        var srcRef = getBlockRefById.call(_this, el.sourceBlockId);
+        var dstRef = getBlockRefById.call(_this, el.destinationBlockId);
 
         var edgeRef = drawEdges.call(_this, el.name, srcRef, dstRef, el.mapping);
         if (edgeRef) {
@@ -307,8 +314,55 @@ var d3MapConnect = (function (undefined) {
       }
     }
 
+    function getBlockRefById(id) {
+      var respRef = this.refs.blocks.find(function (fel) { return fel.data.id === id; });
+      return respRef;
+    }
+
+    function getDataBlockById(id) {
+      var resp = this.data.blocks.find(function (fel) { return fel.id === id; });
+      return resp;
+    }
+
+    function markUsedFields() {
+      var _this = this;
+
+      this.data.maps.forEach(function (el) {
+        var srcBlock = getDataBlockById.call(_this, el.sourceBlockId);
+        var srcFields = el.mapping.map(function (m) { return m.src; });
+        if (srcBlock && srcFields) {
+          markUsedFieldsInBlock.call(_this, srcBlock, srcFields);
+        }
+
+        var dstBlock = getDataBlockById.call(_this, el.destinationBlockId);
+        var dstFields = el.mapping.map(function (m) { return m.dst; });
+        if (dstBlock && dstFields) {
+          markUsedFieldsInBlock.call(_this, dstBlock, dstFields);
+        }
+      });
+    }
+
+    function markUsedFieldsInBlock(block, fieldsArray) {
+      fieldsArray.forEach(function (name) {
+        if (0 === name.toUpperCase().indexOf('IN.')) {
+          name = name.substr(3);
+          var node = block.requestNodes.find(function (fel) { return !fel.isUsed && fel.name === name; });
+          if (node) {
+            node.isUsed = true;
+          }
+        } else if (0 === name.toUpperCase().indexOf('OUT.')) {
+          name = name.substr(4);
+          var node = block.responseNodes.find(function (fel) { return !fel.isUsed && fel.name === name; });
+          if (node) {
+            node.isUsed = true;
+          }
+        }
+      });
+    }
+
     return {
-      setData: setData
+      setData: setData,
+      showUnused: showUnused
     };
   }();
 
