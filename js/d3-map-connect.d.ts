@@ -11,7 +11,7 @@ declare namespace d3MapConnect {
 
     interface IFlowModel {
         blocks: Array<IBlock>;
-        
+        maps: Array<IMap>;
     }
 
     interface IBlock {
@@ -24,5 +24,22 @@ declare namespace d3MapConnect {
         name: string;
     }
 
-    function connectWith(node: any): IMapVisualizer;
+    interface IMap {
+        name: string;
+        sourceBlockId: string;
+        destinationBlockId: string;
+        mapping: Array<IMapping>;
+    }
+
+    interface IMapping {
+        src: string;
+        dst: string;
+    }
+
+    interface IOptions {
+        showUnused: boolean;
+        nodeNameFn: (name: string) => string;
+    }
+
+    function connectWith(node: any, options?: IOptions): IMapVisualizer;
 }

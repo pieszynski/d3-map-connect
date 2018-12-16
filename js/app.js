@@ -76,7 +76,10 @@ var data = {
         }
     ]
 }
-var mapFlow = d3MapConnect.connectWith(document.querySelector('.chart-container'))
+var mapFlow = d3MapConnect.connectWith(
+    document.querySelector('.chart-container'),
+    { showUnused: true }
+);
 mapFlow.setData(data);
 
 function updateShowUnused(evt) {

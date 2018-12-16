@@ -26,7 +26,8 @@ var d3MapConnect = (function (undefined) {
           y: 30
         }
       },
-      showUnused: true
+      showUnused: true,
+      nodeNameFn: function _nodeNameFn(name) { return name; }
     }, options);
     this.refs = {
       chart: undefined,
@@ -247,6 +248,17 @@ var d3MapConnect = (function (undefined) {
         .attr('height', blockRef.height + heightAdd)
         .attr('stroke', this.options.chart.fontStroke)
         .attr('fill', 'transparent');
+      
+      // narysowanie opisu bloku
+      if (blockRef.data.id) {
+        blockRef.node.append('text')
+          .attr('x', blockRef.x + blockRef.request.width + this.options.chart.blockInnerMargin + Math.ceil(this.options.chart.blockInnerSize / 2))
+          .attr('y', blockRef.y - 2 * this.options.chart.blockInnerMargin)
+          .attr('text-anchor', 'middle')
+          .attr('font-family', this.options.chart.fontFamily)
+          .attr('font-size', this.options.chart.fontSize)
+          .text(blockRef.data.id);
+      }
     }
 
     function drawInputOutputs(x, y, width, align, parentNode, nameNodesArray) {
@@ -270,11 +282,12 @@ var d3MapConnect = (function (undefined) {
         return y + yScale(name) * ySpacing + ySize + yOffset;
       }
       
+      var _this = this;
       node.enter().append('text')
         .attr('y', function (d) { return yScaleFn(d.name); })
         .attr('font-family', this.options.chart.fontFamily)
         .attr('font-size', this.options.chart.fontSize)
-        .text(function (d) { return d.name; })
+        .text(function (d) { return _this.options.nodeNameFn(d.name); })
         .each(function (d) { d.width = Math.ceil(this.getComputedTextLength()); })
         .attr('x', function (d) { return ('end' !== align ? x : x + width - d.width); });
       
@@ -288,9 +301,10 @@ var d3MapConnect = (function (undefined) {
 
     function calcLongestTextWidth(parentNode, nameNodesArray) {
 
-      var resp = 0;
+      var resp = 0,
+        _this = this;
       parentNode.selectAll('text')
-        .data(nameNodesArray.map(function (el) { return el.name; }))
+        .data(nameNodesArray.map(function (el) { return _this.options.nodeNameFn(el.name); }))
         .enter().append('text')
         .attr('class', 'text-length-calc')
         .attr('font-family', this.options.chart.fontFamily)
