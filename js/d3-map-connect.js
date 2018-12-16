@@ -45,6 +45,14 @@ var d3MapConnect = (function (undefined) {
       console.log('options', this.options);
       console.log('data', this.data);
       reDraw.call(this);
+
+      // wejście danych
+      this.refs.chart
+        .attr('transform', `translate(0,0)`)
+        .transition()
+          .duration(250)
+          .ease(d3.easeBackOut)
+          .attr('transform', `translate(${this.options.chart.pos.x},${this.options.chart.pos.y})`);
     }
 
     function showUnused(show) {
